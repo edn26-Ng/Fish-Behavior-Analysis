@@ -1,0 +1,26 @@
+source:
+  type: webcam          # webcam | file | picamera2
+  webcam_index: 0
+  width: 1280
+  height: 720
+  fps: 30
+
+detector:
+  mode: yolo
+  model: yolov8s.pt
+  conf: 0.25
+  classes: null
+  tracker: botsort.yaml   # botsort.yaml | bytetrack.yaml | null (disables tracking)
+
+hand_detector:
+  mode: hand
+  max_hands: 2
+  conf: 0.5
+
+display:
+  window_name: "Fish Behavior Demo"
+  show_fps: true
+  flip_horizontal: true
+  display_width: 1280
+  display_height: 720
+  filter_classes: ["hand"]  # classes shown when filter is ON; null disables toggle
