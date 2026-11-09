@@ -53,6 +53,7 @@ class FileSource(BaseSource):
     fps_override is required for raw Pi .h264 files (no FPS metadata).
     """
 
+    # DEFAULT: fps_override=None reads FPS from the file. Set it to the Pi's recording FPS for raw .h264 once capture settings are fixed.
     def __init__(self, path: str, fps_override: float | None = None) -> None:
         self._cap = cv2.VideoCapture(path)
         if not self._cap.isOpened():
@@ -124,6 +125,7 @@ class WebcamSource(BaseSource):
         self._cap.release()
 
 
+# DEFAULT: placeholder. Implement with picamera2 after the Pi 4 + stereo HAT vs Pi 5 decision and camera mounting.
 class PicameraSource(BaseSource):
     """Raspberry Pi camera via picamera2. Not implemented until Pi model is confirmed."""
 
@@ -153,7 +155,7 @@ def build_source(cfg: dict) -> BaseSource:
     if src_type == "file":
         return FileSource(
             path=cfg["path"],
-            fps_override=cfg.get("fps_override"),
+            fps_override=cfg.get("fps_override"),  # DEFAULT: None; set source.fps_override for raw Pi .h264 recordings.
         )
 
     if src_type == "webcam":

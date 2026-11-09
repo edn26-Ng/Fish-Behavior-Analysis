@@ -17,6 +17,8 @@ class Tracker:
     Kalman filter state and causes ID switches and spurious speed spikes.
     """
 
+    # DEFAULT: tracker_cfg = stock Ultralytics BoT-SORT (tuned for pedestrians, camera-motion compensation on).
+    # Replace with configs/tracker_fish.yaml tuned on tank footage (gmc_method: none, track_buffer scaled to FPS).
     def __init__(self, detector: YOLODetector, tracker_cfg: str = "botsort.yaml") -> None:
         self._detector = detector
         self._tracker_cfg = tracker_cfg
@@ -59,5 +61,5 @@ def build_tracker(detector: YOLODetector, cfg: dict) -> Tracker:
     """
     return Tracker(
         detector=detector,
-        tracker_cfg=cfg.get("tracker", "botsort.yaml"),
+        tracker_cfg=cfg.get("tracker", "botsort.yaml"),  # DEFAULT: stock BoT-SORT fallback; point config `tracker:` at configs/tracker_fish.yaml.
     )
