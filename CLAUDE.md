@@ -24,7 +24,7 @@ Event tag: **Disturbance** (human/lab activity, catches false positives).
 ## Tank + hardware
 - Concrete cylinder, opaque, open top → cameras top-down. Ø ~1.2–1.3 m, depth ~1.2 m, clear water.
 - Tilapia, est. 50–100.
-- 2× Camera Module 3 Wide (IMX708), top-down stereo, ~60 cm above water, ~10 cm baseline.
+- 2× Camera Module 3 Wide (IMX708), top-down stereo, ~69 cm (27") above water (water surface is ~29" below the tank rim), ~10 cm baseline. Short image axis covers ~91 cm of the ~125 cm tank → ~84% of the surface is in frame; two thin edge strips are cut off.
 - ⚠️ **Unresolved:** project spec says Pi 4 + stereo HAT; order sheet lists Pi 5 (two native camera ports). Confirm before writing capture code.
 - Night recording open: candidate 940 nm IR + NoIR cameras.
 
