@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+
+# Model weights (auto-downloaded on first run; see README)
+*.pt
+*.pth
+*.onnx
+*.task
+*.engine
+
+# Data, video, outputs
+data/
+datasets/
+runs/
+recordings/
+*.mp4
+*.avi
+*.mkv
+*.h264
+*.csv
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

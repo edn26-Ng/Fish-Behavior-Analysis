@@ -31,7 +31,7 @@ Plus event tag: Disturbance (human/lab activity) — used to catch false positiv
 
 ## Hardware
 - Raspberry Pi 4 + dual-camera extension (must be frame-synchronized stereo HAT).
-- 2x Camera Module 3 Wide (IMX708), top-down stereo, ~60 cm above water, ~10 cm baseline.
+- 2x Camera Module 3 Wide (IMX708), top-down stereo, ~69 cm (27") above water (water surface is ~29" below the tank rim), ~10 cm baseline. Short image axis covers ~91 cm of the ~125 cm tank → ~84% of the surface is in frame; two thin edge strips are cut off.
 - Circular polarizing filters for surface glare (to test).
 - Feeder: purchased commercially — secondary project. Pi = capture only for now.
 
