@@ -20,9 +20,9 @@ class YOLODetector:
 
     def __init__(
         self,
-        model_path: str = "yolov8n.pt",
-        conf: float = 0.25,
-        classes: list[int] | None = None,
+        model_path: str = "yolov8n.pt",          # DEFAULT: stock COCO weights (no fish class). Replace with models/tilapia_v1.pt after fine-tuning.
+        conf: float = 0.25,                      # DEFAULT: Ultralytics default. Tune on tank footage (glare/ripple false positives vs missed clumped fish).
+        classes: list[int] | None = None,        # DEFAULT: all classes. Use [0] (person) for webcam tests; keep None for the 1-class tilapia model.
     ) -> None:
         self.model = YOLO(model_path)
         self.conf = conf
@@ -59,7 +59,7 @@ def build_detector(cfg: dict) -> YOLODetector:
     New detector types go here only — callers never import YOLODetector directly.
     """
     return YOLODetector(
-        model_path=cfg.get("model", "yolov8n.pt"),
-        conf=cfg.get("conf", 0.25),
-        classes=cfg.get("classes"),
+        model_path=cfg.get("model", "yolov8n.pt"),   # DEFAULT: fallback is stock COCO weights; set detector.model to tilapia weights in config.
+        conf=cfg.get("conf", 0.25),                  # DEFAULT: untuned threshold; set detector.conf after evaluating on tank footage.
+        classes=cfg.get("classes"),                  # DEFAULT: None = all classes.
     )
