@@ -24,7 +24,7 @@ class Tracker:
     def track(self, image) -> list[dict]:
         """
         Run tracking on one BGR frame.
-        Returns list of {bbox: [x1,y1,x2,y2], conf, cls_id, cls_name, track_id}.
+        Returns list of {bbox: [x1,y1,x2,y2], conf, cls_id, cls, track_id}.
         track_id is None when the tracker cannot assign an ID (e.g. first frame,
         low-confidence box) — callers should filter these before logging.
         """
@@ -46,7 +46,7 @@ class Tracker:
                 "bbox": [x1, y1, x2, y2],
                 "conf": float(box.conf[0]),
                 "cls_id": cls_id,
-                "cls_name": self._detector.model.names[cls_id],
+                "cls": self._detector.model.names[cls_id],
                 "track_id": int(ids[i]) if ids is not None else None,
             })
         return tracks

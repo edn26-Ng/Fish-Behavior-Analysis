@@ -31,7 +31,7 @@ class YOLODetector:
     def detect(self, image) -> list[dict]:
         """
         Run plain prediction on one BGR frame (no tracking, no persist).
-        Returns list of {bbox: [x1,y1,x2,y2], conf, cls_id, cls_name}.
+        Returns list of {bbox: [x1,y1,x2,y2], conf, cls_id, cls}.
         """
         results = self.model.predict(
             image,
@@ -48,7 +48,7 @@ class YOLODetector:
                 "bbox": [x1, y1, x2, y2],
                 "conf": float(box.conf[0]),
                 "cls_id": cls_id,
-                "cls_name": self.model.names[cls_id],
+                "cls": self.model.names[cls_id],
             })
         return detections
 

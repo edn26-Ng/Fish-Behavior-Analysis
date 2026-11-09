@@ -1,0 +1,25 @@
+source:
+  type: file                  # file | webcam | picamera2
+  path: recordings/clip1.mp4
+  fps_override: null          # e.g. 30 for raw Pi .h264
+
+preprocess:
+  undistort: false
+  calibration_file: null
+  tank_mask:
+    enabled: false
+    center: null              # [cx, cy] in pixels
+    radius: null              # pixels
+  crop_to_mask: false
+  clahe: false
+  denoise: false
+
+detector:
+  model: yolov8n.pt           # later: models/tilapia_v1.pt
+  conf: 0.25
+  classes: null               # testing: [0] = person; null = all classes
+
+tracker: configs/tracker_fish.yaml
+
+output:
+  dir: runs/tracks

@@ -1,0 +1,25 @@
+# tracker_fish.yaml — skeleton copy of Ultralytics botsort.yaml
+# Tune one setting at a time once fish video is available.
+# See docs/code-environment-organization.md for per-setting notes.
+
+tracker_type: botsort         # botsort | bytetrack — compare both; keep fewer ID switches
+
+# Detection confidence thresholds
+track_high_thresh: 0.5        # confident detections used for direct matches; lower if clumped fish get dropped
+track_low_thresh: 0.1         # weak detections used in second-association pass (bytetrack only)
+new_track_thresh: 0.6         # minimum conf to open a new track ID; raise if glare/ripples spawn ghost IDs
+
+# Track lifetime
+track_buffer: 30              # frames a lost fish is remembered before its ID is closed; scale with FPS
+                              # raise if fish pass under others and re-emerge
+
+# Matching
+match_thresh: 0.8             # IoU threshold for box matching; fish turn fast so may need lowering
+
+# Camera-motion compensation
+# Camera is fixed — set to none; enabling sof/ecc/orb adds cost with no benefit
+gmc_method: none              # none | sof | ecc | orb
+
+# Appearance re-ID
+# Off until track_report.py proves ID switches corrupt the data
+with_reid: false
