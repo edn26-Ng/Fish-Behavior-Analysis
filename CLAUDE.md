@@ -7,6 +7,10 @@
 - Code or direct answer first; explain only non-obvious details.
 - Optimize for ADHD: short sections, bullets, tables, bold key points.
 
+## Keep this file current (standing rule)
+- **Every PR that adds or changes a module, config, script or hardware decision must update this file** in the same PR: what it does, how to run it, and any new gotchas.
+- Fuller design notes live in `docs/code-environment-organization.md`; update its repo-layout and deferred tables too.
+
 ## Project in one paragraph
 Hand-labeled video library of tilapia group behavior → train a model that classifies group state → later drive an automated feeder that minimizes feed waste. Pi = capture only for now; the feeder is a purchased, secondary project.
 
@@ -25,8 +29,23 @@ Event tag: **Disturbance** (human/lab activity, catches false positives).
 - Concrete cylinder, opaque, open top → cameras top-down. Ø ~1.2–1.3 m, depth ~1.2 m, clear water.
 - Tilapia, est. 50–100.
 - 2× Camera Module 3 Wide (IMX708), top-down stereo, ~69 cm (27") above water (water surface is ~29" below the tank rim), ~10 cm baseline. Short image axis covers ~91 cm of the ~125 cm tank → ~84% of the surface is in frame; two thin edge strips are cut off.
-- ⚠️ **Unresolved:** project spec says Pi 4 + stereo HAT; order sheet lists Pi 5 (two native camera ports). Confirm before writing capture code.
+- ⚠️ **Unresolved:** project spec says Pi 4 + stereo HAT; order sheet lists Pi 5 (two native camera ports). **Pi 4 is on hand** → single-camera recording works now via `V1/Capture/record.py`; stereo needs the Pi 5 (or HAT).
 - Night recording open: candidate 940 nm IR + NoIR cameras.
+
+## Pi capture (`V1/Capture/record.py`) 🟡
+Records on the Pi; all processing happens offline on a laptop.
+- **Install (Pi):** `sudo apt install -y python3-picamera2 ffmpeg`. picamera2 is apt-only; a venv needs `--system-site-packages`.
+- **Check camera:** `rpicam-hello --list-cameras` → should list `imx708_wide`.
+- **Record:** `python3 V1/Capture/record.py --config V1/configs/capture.yaml --duration 60 --label test`
+  - `--duration 0` = until Ctrl-C. `--cameras 0 1` = stereo (**Pi 5 only**; Pi 4 has one port).
+- **Output per segment, per camera** (in `recordings/`, gitignored):
+  - `<stamp>_<label>_cam<N>_seg<K>.mp4`: H.264, 1536×864 @ 30 fps (binned mode = full wide FOV)
+  - `…_frames.csv`: one row per **encoded** frame (`frame, sensor_ts_us, wall_time`). Rows == video frames. Use `sensor_ts_us` to pair stereo frames (no hardware sync).
+  - `…json`: settings + the locked exposure / gain / white balance
+- **Behavior:** auto-exposure settles for `warmup_s`, then exposure, gain and white balance are **locked** for the session; focus is fixed (`lens_position` in dioptres). New file every `segment_s`; stops when free disk < `min_free_gb`.
+- **Download:** `scp <user>@<pi>.local:~/Fish-Behavior-Analysis/recordings/* .` Cornell Wi-Fi often blocks `.local`/device SSH → use a phone hotspot or a USB stick.
+- **Defaults (`# DEFAULT:` in `capture.yaml`):** `cameras: [0]`, `fps: 30`, `exposure_us/analogue_gain: null`, `lens_position: 1.0`.
+- **Gotchas:** mp4 container timestamps come from ffmpeg's wall clock; for kinematics trust `_frames.csv`. Hardware-tested only against a mock so far; verify on the Pi.
 
 ## Current task: webcam demo (validate pipeline before Pi/tank)
 Modules must stay separate and swappable:

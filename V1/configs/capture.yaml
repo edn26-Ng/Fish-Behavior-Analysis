@@ -1,0 +1,26 @@
+# Pi recording settings for V1/Capture/record.py
+# Run on the Pi:  python3 V1/Capture/record.py --config V1/configs/capture.yaml
+
+cameras: [0]                  # DEFAULT: one camera (Pi 4 has one port). Pi 5 stereo: [0, 1].
+
+video:
+  width: 1536                 # IMX708 2x2-binned mode: full wide FOV, up to 120 fps
+  height: 864
+  fps: 30                     # DEFAULT: 30. Raise if fast feeding bursts blur between frames.
+  bitrate: 10000000           # bits/s (~4.5 GB/hour/camera)
+
+exposure:
+  lock: true                  # lock exposure + white balance after warm-up (no auto drift mid-clip)
+  warmup_s: 3                 # let auto-exposure settle before locking
+  exposure_us: null           # DEFAULT: null = use settled auto value. Set fixed value once tank lighting is known.
+  analogue_gain: null         # DEFAULT: null = use settled auto value.
+
+focus:
+  lens_position: 1.0          # DEFAULT: 1.0 dioptres ≈ 1 m focus (camera ~69 cm above water, fish up to ~1.9 m). Tune on tank footage.
+
+recording:
+  out_dir: recordings         # gitignored
+  segment_s: 300              # new file every 5 min (limits loss if power drops)
+  duration_s: 60              # total length; null = until Ctrl-C
+  min_free_gb: 2              # stop before the SD card fills
+  label: test                 # added to filenames, e.g. tank1, prefeed
