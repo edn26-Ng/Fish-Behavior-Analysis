@@ -29,7 +29,7 @@ Hand-labeled video library of tilapia group behavior → train a model that clas
 | **"trackerCLI"** | = `V1/Tools/track_video.py` (video in → tracks CSV out). |
 | **`webcam_demo/`** | Kept as the webcam concept demo. Not extended. New work goes in `V1/Data_Pipeline/` and `V1/Tools/`. |
 | **Defaults** | Anything that needs tank footage, calibration or hardware decisions ships as a **default implementation**, marked `# DEFAULT:` in code. See [Default implementations](#default-implementations-marked--default). |
-| **Current scope** | Capture, Preprocess, Detect, Track, Log, plus tools to verify and label. Features, classification and Pi capture come later. |
+| **Current scope** | Capture, Preprocess, Detect, Track, Log, plus tools to verify and label. Pi recording (`V1/Capture/record.py`) is done; features and classification come later. |
 
 ---
 
@@ -60,6 +60,8 @@ Each stage is a **separate, swappable module** with fixed input/output. Swapping
 Fish-Behavior-Analysis/
 ├── webcam_demo/                # webcam concept demo (unchanged)
 ├── V1/
+│   ├── Capture/
+│   │   └── record.py           🟡 Pi recorder (picamera2): segmented mp4 + per-frame sensor timestamps + locked-exposure JSON
 │   ├── Data_Pipeline/
 │   │   ├── source.py           🟡 frame sources (file, webcam; Pi placeholder)
 │   │   ├── preprocess.py       🟡 pass-through default (mask/crop/undistort need footage + calibration)
@@ -72,6 +74,7 @@ Fish-Behavior-Analysis/
 │   │   ├── track_report.py     🦴 tracking-quality report (thresholds need fish data)
 │   │   └── extract_frames.py   🦴 frames for labeling (needs tilapia recordings)
 │   └── configs/
+│       ├── capture.yaml        🟡 Pi recording settings (cameras, 1536×864@30, exposure lock, focus, segments)
 │       ├── pipeline.yaml       ⬜ source, preprocess, model path, tracker, output
 │       └── tracker_fish.yaml   🦴 copy of Ultralytics botsort.yaml; tune on fish video
 ├── datasets/tilapia.yaml       🦴 dataset config for fine-tuning (gitignored data)
@@ -106,6 +109,10 @@ Some code needs **tilapia footage, in-water calibration or the Pi decision** bef
 | `source.py` | `fps_override` | `None` (read FPS from file) | Pi recording FPS | Pi capture settings fixed |
 | `source.py` | `PicameraSource` | Raises `NotImplementedError` | picamera2 capture | Pi 4 vs Pi 5 decision + mounting |
 | `preprocess.py` | `preprocess()` | Pass-through, `cfg` ignored | Undistort → mask → crop → (CLAHE) → (denoise) | Footage + in-water calibration |
+| `capture.yaml` | `cameras` | `[0]` (Pi 4, one port) | `[0, 1]` | Pi 5 or stereo HAT |
+| `capture.yaml` | `video.fps` | `30` | Higher if feeding bursts blur | Tank footage |
+| `capture.yaml` | `exposure_us` / `analogue_gain` | `null` (settled auto value, then locked) | Fixed values | Tank lighting known |
+| `capture.yaml` | `focus.lens_position` | `1.0` dioptres (~1 m) | Value sharpest at mid-depth | Tank footage |
 | `preprocess.py` | Crop offset | `(0, 0)` | Real offset from crop step | Tank mask |
 
 ### Instructions for files still to be written
@@ -252,7 +259,8 @@ Copy of Ultralytics `botsort.yaml`; tune once fish video exists. **Change one se
 |---|---|
 | Tilapia weights | Tank recordings + ~300–500 labeled frames |
 | Preprocess mask/undistort values | Tank footage + checkerboard calibration in water |
-| `PicameraSource` / Pi recording script | **Pi 4 + stereo HAT vs Pi 5** decision |
+| `PicameraSource` (live Pi frames into the pipeline) | Not needed while processing is offline; Pi recording script is done (`V1/Capture/record.py`) |
+| Stereo recording | Pi 5 (two ports) or stereo HAT; `record.py` already supports `--cameras 0 1` |
 | Stereo depth / `StereoFileSource` | Cameras mounted + calibrated |
 | Feature extraction (speed, accel, dispersion, Delaunay, depth) | Working tracks |
 | Behavior classifier (temporal window) | Features + behavior labels |
