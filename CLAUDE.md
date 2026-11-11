@@ -34,7 +34,8 @@ Event tag: **Disturbance** (human/lab activity, catches false positives).
 
 ## Pi capture (`V1/Capture/record.py`) 🟡
 Records on the Pi; all processing happens offline on a laptop.
-- **Install (Pi):** `sudo apt install -y python3-picamera2 ffmpeg`. picamera2 is apt-only; a venv needs `--system-site-packages`.
+- **Install (Pi):** `sudo apt install -y python3-picamera2 python3-yaml ffmpeg git`. picamera2 is apt-only; a venv needs `--system-site-packages`.
+- **Cable:** Pi 4 uses the standard **15-pin** ribbon (ships with the camera, 200 mm). The 22-pin "Pi 5" cables do **not** fit a Pi 4. A 27" mount needs a longer 15-pin cable or the Pi mounted on the frame.
 - **Check camera:** `rpicam-hello --list-cameras` → should list `imx708_wide`.
 - **Record:** `python3 V1/Capture/record.py --config V1/configs/capture.yaml --duration 60 --label test`
   - `--duration 0` = until Ctrl-C. `--cameras 0 1` = stereo (**Pi 5 only**; Pi 4 has one port).

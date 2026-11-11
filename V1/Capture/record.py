@@ -13,7 +13,7 @@ Usage (on the Pi):
   python3 V1/Capture/record.py --config V1/configs/capture.yaml --duration 600 --label prefeed
 
 Install: picamera2 comes from apt, not pip:
-  sudo apt install -y python3-picamera2 ffmpeg
+  sudo apt install -y python3-picamera2 python3-yaml ffmpeg git
   (venv must be created with --system-site-packages to see it)
 """
 
@@ -37,7 +37,7 @@ try:
     from picamera2.outputs import FfmpegOutput
 except ImportError as e:  # not on a Pi
     raise SystemExit(
-        "picamera2 not found. Run this on the Pi after: sudo apt install -y python3-picamera2 ffmpeg"
+        "picamera2 not found. Run this on the Pi after: sudo apt install -y python3-picamera2 python3-yaml ffmpeg"
     ) from e
 
 
