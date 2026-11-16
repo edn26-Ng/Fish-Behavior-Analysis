@@ -28,3 +28,6 @@ recordings/
 Thumbs.db
 .vscode/
 .idea/
+
+# Calibration check images (regenerate with calibrate_stereo.py)
+*_check.jpg

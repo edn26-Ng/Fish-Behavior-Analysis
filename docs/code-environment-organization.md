@@ -70,6 +70,7 @@ Fish-Behavior-Analysis/
 │   │   ├── tracker.py          🟡 tracking on every frame; stock BoT-SORT by default
 │   │   └── logger.py           ✅ per-frame CSV writer
 │   ├── Tools/
+│   │   ├── calibrate_stereo.py 🟡 USB stereo calibration from a checkerboard video → configs/stereo_calib.yaml
 │   │   ├── track_video.py      ⬜ main CLI ("trackerCLI"), file exists but empty
 │   │   ├── replay.py           ⬜ draw CSV back onto video
 │   │   ├── track_report.py     🦴 tracking-quality report (thresholds need fish data)
