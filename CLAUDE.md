@@ -45,9 +45,9 @@ Records the USB stereo camera on the Pi; processing is offline.
   - `…_ts.txt`: one timestamp per frame (ms from segment start, mkv timecode v2)
   - `…json`: settings, controls, `stream_start_epoch_s`, measured fps. **Frame wall time = `stream_start_epoch_s` + ts/1000**
 - **Download (from laptop):** `scp nk693@<pi-ip>:~/Fish-Behavior-Analysis/recordings/* .`
-- **Verified on the Pi 4:** 3840×1080 @ 30 fps keeps up (593 frames / 20 s, plain ffmpeg test).
-- ⚠️ **Storage: ~44 GB/hour at 3840×1080@30** (≈247 MB per 20 s). A 64 GB card holds ~1 h. Record feeding windows only, use 2560×720 (~half), or add a USB SSD.
-- **Gotchas:** stopping with Ctrl-C closes the file cleanly (ffmpeg gets SIGINT). Frame drops are flagged if measured fps < 90% of requested. Recorder tested on a synthetic MJPG source; first full run on the Pi still to do.
+- **Verified on the Pi 4:** `record_usb.py` 60 s at 3840×1080 @ 30 → **1797 frames, 29.94 fps, 654 MB** ✅
+- ⚠️ **Storage: ~39 GB/hour at 3840×1080@30** (654 MB/min measured). 64 GB card (48 GB free after OS) holds ~1 h 10 min. Record feeding windows only, use 2560×720 (~half), or add a USB SSD.
+- **Gotchas:** stopping with Ctrl-C closes the file cleanly (ffmpeg gets SIGINT). Frame drops are flagged if measured fps < 90% of requested. Download over the hotspot runs ~11 MB/s (≈1 h per hour of footage) → move long recordings with a USB SSD/stick.
 
 ## Ribbon-camera capture (`V1/Capture/record.py`) ⚪ not in use
 For the Camera Module 3 (picamera2) setup that was replaced by the USB stereo camera. Kept in case CSI cameras return.
