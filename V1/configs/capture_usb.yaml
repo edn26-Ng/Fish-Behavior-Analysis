@@ -1,0 +1,26 @@
+# USB stereo camera recording for V1/Capture/record_usb.py
+# Camera: "3D USB Camera" (USB ID 32e4:0035), one side-by-side frame = left | right
+# Run on the Pi:  python3 V1/Capture/record_usb.py --config V1/configs/capture_usb.yaml
+
+device: /dev/video0           # from `v4l2-ctl --list-devices` → "3D USB Camera" (first node)
+
+video:
+  width: 3840                 # DEFAULT: 3840x1080 = 1920x1080 per eye. 2560x720 halves file size.
+  height: 1080
+  fps: 30                     # DEFAULT: 30 (Pi 4 keeps up at 3840x1080). Camera supports 60.
+  # MJPG is copied straight from the camera (no re-encode): ~44 GB/hour at 3840x1080@30.
+
+controls:                     # passed to `v4l2-ctl --set-ctrl` before recording; names vary by camera
+  {}                          # DEFAULT: none (camera auto exposure/white balance).
+  # After checking names with --show-controls, lock for the tank, e.g.:
+  # auto_exposure: 1                 # 1 = manual
+  # exposure_time_absolute: 156
+  # white_balance_automatic: 0
+  # white_balance_temperature: 4600
+
+recording:
+  out_dir: recordings         # gitignored
+  segment_s: 300              # new file every 5 min
+  duration_s: 60              # total; 0/null = until Ctrl-C
+  min_free_gb: 3              # stop before the SD card fills
+  label: test                 # in filenames, e.g. prefeed
