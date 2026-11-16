@@ -28,11 +28,29 @@ Event tag: **Disturbance** (human/lab activity, catches false positives).
 ## Tank + hardware
 - Concrete cylinder, opaque, open top → cameras top-down. Ø ~1.2–1.3 m, depth ~1.2 m, clear water.
 - Tilapia, est. 50–100.
-- 2× Camera Module 3 Wide (IMX708), top-down stereo, ~69 cm (27") above water (water surface is ~29" below the tank rim), ~10 cm baseline. Short image axis covers ~91 cm of the ~125 cm tank → ~84% of the surface is in frame; two thin edge strips are cut off.
-- ⚠️ **Unresolved:** project spec says Pi 4 + stereo HAT; order sheet lists Pi 5 (two native camera ports). **Pi 4 is on hand** → single-camera recording works now via `V1/Capture/record.py`; stereo needs the Pi 5 (or HAT).
+- **Camera (current): USB stereo "3D USB Camera"** (USB ID `32e4:0035`): one side-by-side MJPG frame (left | right), up to **3840×1080 @ 60 fps = 1920×1080 per eye**. Replaced the ribbon modules (Nov 2026).
+- Planned mount: top-down, ~69 cm (27") above water (water surface is ~29" below the tank rim), ~10 cm baseline. Short image axis covers ~91 cm of the ~125 cm tank → ~84% of the surface is in frame; two thin edge strips are cut off.
+- **Pi:** Raspberry Pi 4 (hostname `Rpifishfeeder`), Raspberry Pi OS 64-bit, controlled over **SSH from a laptop on a phone hotspot** (no monitor/keyboard). Find its IP: `1..14 | % { ping -n 2 -w 1000 "172.20.10.$_" | Out-Null }; arp -a` → MAC starting `dc-a6-32`/`2c-cf-67`/`d8-3a-dd`/`e4-5f-01`.
+- ⚠️ The first Pi 4 board has a **dead USB controller** (`lsusb` empty, `dmesg`: `brcm-pcie … link down`, persists after bootloader update) → don't use it for the camera. Always check `lsusb` shows the **VIA Labs hub** first.
 - Night recording open: candidate 940 nm IR + NoIR cameras.
 
-## Pi capture (`V1/Capture/record.py`) 🟡
+## USB stereo capture (`V1/Capture/record_usb.py`) 🟢 current
+Records the USB stereo camera on the Pi; processing is offline.
+- **Install (Pi):** `sudo apt install -y ffmpeg v4l-utils python3-yaml git`
+- **Check camera:** `lsusb` → `3D USB Camera`; `v4l2-ctl --list-devices` → first node (usually `/dev/video0`) goes in `capture_usb.yaml`.
+- **Record:** `python3 V1/Capture/record_usb.py --config V1/configs/capture_usb.yaml --duration 600 --label prefeed` (`--duration 0` = until Ctrl-C)
+- **Camera controls:** `--show-controls` lists names; set fixed exposure/white balance under `controls:` once tank lighting is known.
+- **Output per segment** (`recordings/`, gitignored):
+  - `…_stereo_seg<K>.mkv`: MJPG copied from the camera, **left half = left eye**
+  - `…_ts.txt`: one timestamp per frame (ms from segment start, mkv timecode v2)
+  - `…json`: settings, controls, `stream_start_epoch_s`, measured fps. **Frame wall time = `stream_start_epoch_s` + ts/1000**
+- **Download (from laptop):** `scp nk693@<pi-ip>:~/Fish-Behavior-Analysis/recordings/* .`
+- **Verified on the Pi 4:** 3840×1080 @ 30 fps keeps up (593 frames / 20 s, plain ffmpeg test).
+- ⚠️ **Storage: ~44 GB/hour at 3840×1080@30** (≈247 MB per 20 s). A 64 GB card holds ~1 h. Record feeding windows only, use 2560×720 (~half), or add a USB SSD.
+- **Gotchas:** stopping with Ctrl-C closes the file cleanly (ffmpeg gets SIGINT). Frame drops are flagged if measured fps < 90% of requested. Recorder tested on a synthetic MJPG source; first full run on the Pi still to do.
+
+## Ribbon-camera capture (`V1/Capture/record.py`) ⚪ not in use
+For the Camera Module 3 (picamera2) setup that was replaced by the USB stereo camera. Kept in case CSI cameras return.
 Records on the Pi; all processing happens offline on a laptop.
 - **Install (Pi):** `sudo apt install -y python3-picamera2 python3-yaml ffmpeg git`. picamera2 is apt-only; a venv needs `--system-site-packages`.
 - **Cable:** Pi 4 uses the standard **15-pin** ribbon (ships with the camera, 200 mm). The 22-pin "Pi 5" cables do **not** fit a Pi 4. A 27" mount needs a longer 15-pin cable or the Pi mounted on the frame.
