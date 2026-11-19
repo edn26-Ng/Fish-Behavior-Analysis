@@ -45,9 +45,19 @@ Records the USB stereo camera on the Pi; processing is offline.
   - `…_ts.txt`: one timestamp per frame (ms from segment start, mkv timecode v2)
   - `…json`: settings, controls, `stream_start_epoch_s`, measured fps. **Frame wall time = `stream_start_epoch_s` + ts/1000**
 - **Download (from laptop):** `scp nk693@<pi-ip>:~/Fish-Behavior-Analysis/recordings/* .`
-- **Verified on the Pi 4:** 3840×1080 @ 30 fps keeps up (593 frames / 20 s, plain ffmpeg test).
-- ⚠️ **Storage: ~44 GB/hour at 3840×1080@30** (≈247 MB per 20 s). A 64 GB card holds ~1 h. Record feeding windows only, use 2560×720 (~half), or add a USB SSD.
-- **Gotchas:** stopping with Ctrl-C closes the file cleanly (ffmpeg gets SIGINT). Frame drops are flagged if measured fps < 90% of requested. Recorder tested on a synthetic MJPG source; first full run on the Pi still to do.
+- **Verified on the Pi 4:** `record_usb.py` 60 s at 3840×1080 @ 30 → **1797 frames, 29.94 fps, 654 MB** ✅
+- ⚠️ **Storage: ~39 GB/hour at 3840×1080@30** (654 MB/min measured). 64 GB card (48 GB free after OS) holds ~1 h 10 min → **USB SSD needed for multi-hour pre-feed recording**, or drop to 10 fps / 2560×720 for slow pre-feed periods.
+- **Gotchas:** stopping with Ctrl-C closes the file cleanly (ffmpeg gets SIGINT). Frame drops are flagged if measured fps < 90% of requested. Download over the hotspot runs ~11 MB/s (≈1 h per hour of footage) → move long recordings with a USB SSD/stick.
+- **Long runs over SSH:** run inside `tmux` (`tmux new -s rec`, detach Ctrl+B D, `tmux attach -t rec`); a dropped SSH session otherwise kills the recording.
+
+## Stereo calibration (`V1/Tools/calibrate_stereo.py`) 🟡 needs first real run
+Gets each eye's lens distortion, the baseline and the rectification needed for depth. Run on the **laptop**.
+- **Board:** `docs/calibration/checkerboard_letter_25mm.pdf` (10×7 squares = **9×6 inner corners**, 25 mm). Print at 100% / Actual size, **measure a square**, glue flat, keep the white border. 11×17 version (35 mm) also there. Never tile sheets.
+- **Record (Pi, camera still):** `python3 V1/Capture/record_usb.py --duration 90 --label calib` while moving the board slowly through all **9 image zones**, ~50/75/100 cm, with tilts, pausing ~1 s per pose, fully inside **both** eyes.
+- **Run:** `python V1/Tools/calibrate_stereo.py --video <…calib…seg000.mkv> --square-mm <measured>`
+- **Output:** `V1/configs/stereo_calib.yaml` (K/D per eye, R/T, R1 R2 P1 P2 Q, `baseline_mm`, RMS, 3×3 coverage) + `stereo_calib_check.jpg` (rectified pair with horizontal lines, gitignored).
+- **Pass:** stereo RMS < ~1 px · baseline ≈ ruler-measured lens gap · no empty coverage zones in either eye. Commit the YAML once it passes.
+- **Gotchas:** calibration is **in air**; underwater depth needs a refraction correction (bucket test still to do). Recalibrate if the camera is dropped or anything on it changes. Uses OpenCV's rational distortion model (wide lenses). Verified on synthetic stereo video: recovered a 60.0 mm baseline exactly.
 
 ## Ribbon-camera capture (`V1/Capture/record.py`) ⚪ not in use
 For the Camera Module 3 (picamera2) setup that was replaced by the USB stereo camera. Kept in case CSI cameras return.
