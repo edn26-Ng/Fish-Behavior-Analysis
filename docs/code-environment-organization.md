@@ -72,12 +72,13 @@ Fish-Behavior-Analysis/
 │   │   └── logger.py           ✅ per-frame CSV writer
 │   ├── Tools/
 │   │   ├── extract_frames.py   🟢 spaced, de-duplicated left-eye frames for labeling
-│   │   ├── calibrate_stereo.py 🟡 USB stereo calibration from a checkerboard video → configs/stereo_calib.yaml
+│   │   ├── calibrate_stereo.py 🟢 USB stereo calibration from a checkerboard video → configs/stereo_calib.yaml
 │   │   ├── track_video.py      ⬜ main CLI ("trackerCLI"), file exists but empty
 │   │   ├── replay.py           ⬜ draw CSV back onto video
 │   │   ├── track_report.py     🦴 tracking-quality report (thresholds need fish data)
 │   └── configs/
 │       ├── capture_usb.yaml    🟢 USB stereo settings (device, 3840×1080@30, v4l2 controls, segments)
+│       ├── stereo_calib.yaml   🟡 v1 stereo calibration (in air, RMS 0.50 px, baseline 58 mm; center-only coverage → redo edges at lab mount)
 │       ├── capture.yaml        ⚪ ribbon-camera settings (cameras, 1536×864@30, exposure lock, focus, segments)
 │       ├── pipeline.yaml       ⬜ source, preprocess, model path, tracker, output
 │       └── tracker_fish.yaml   🦴 copy of Ultralytics botsort.yaml; tune on fish video
