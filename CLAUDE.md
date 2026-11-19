@@ -29,7 +29,7 @@ Event tag: **Disturbance** (human/lab activity, catches false positives).
 - Concrete cylinder, opaque, open top → cameras top-down. Ø ~1.2–1.3 m, depth ~1.2 m, clear water.
 - Tilapia, est. 50–100.
 - **Camera (current): USB stereo "3D USB Camera"** (USB ID `32e4:0035`): one side-by-side MJPG frame (left | right), up to **3840×1080 @ 60 fps = 1920×1080 per eye**. Replaced the ribbon modules (Nov 2026).
-- Planned mount: top-down, ~69 cm (27") above water (water surface is ~29" below the tank rim), ~10 cm baseline. Short image axis covers ~91 cm of the ~125 cm tank → ~84% of the surface is in frame; two thin edge strips are cut off.
+- Planned mount: top-down, ~69 cm (27") above water (water surface is ~29" below the tank rim). **Baseline ≈ 60 mm** (lens gap measured 2 3/8"; confirm with `calibrate_stereo.py`). Short image axis covers ~91 cm of the ~125 cm tank → ~84% of the surface is in frame; two thin edge strips are cut off.
 - **Pi:** Raspberry Pi 4 (hostname `Rpifishfeeder`), Raspberry Pi OS 64-bit, controlled over **SSH from a laptop on a phone hotspot** (no monitor/keyboard). Find its IP: `1..14 | % { ping -n 2 -w 1000 "172.20.10.$_" | Out-Null }; arp -a` → MAC starting `dc-a6-32`/`2c-cf-67`/`d8-3a-dd`/`e4-5f-01`.
 - ⚠️ The first Pi 4 board has a **dead USB controller** (`lsusb` empty, `dmesg`: `brcm-pcie … link down`, persists after bootloader update) → don't use it for the camera. Always check `lsusb` shows the **VIA Labs hub** first.
 - Night recording open: candidate 940 nm IR + NoIR cameras.
@@ -52,6 +52,7 @@ Records the USB stereo camera on the Pi; processing is offline.
 
 ## Stereo calibration (`V1/Tools/calibrate_stereo.py`) 🟡 needs first real run
 Gets each eye's lens distortion, the baseline and the rectification needed for depth. Run on the **laptop**.
+- **Printed board checked:** 10 squares = 9 7/8", 7 squares = 6 7/8" → **25 mm squares, no scaling** (`--square-mm 25`).
 - **Board:** `docs/calibration/checkerboard_letter_25mm.pdf` (10×7 squares = **9×6 inner corners**, 25 mm). Print at 100% / Actual size, **measure a square**, glue flat, keep the white border. 11×17 version (35 mm) also there. Never tile sheets.
 - **Record (Pi, camera still):** `python3 V1/Capture/record_usb.py --duration 90 --label calib` while moving the board slowly through all **9 image zones**, ~50/75/100 cm, with tilts, pausing ~1 s per pose, fully inside **both** eyes.
 - **Run:** `python V1/Tools/calibrate_stereo.py --video <…calib…seg000.mkv> --square-mm <measured>`
