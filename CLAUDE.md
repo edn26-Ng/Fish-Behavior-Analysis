@@ -29,17 +29,27 @@ Event tag: **Disturbance** (human/lab activity, catches false positives).
 - Concrete cylinder, opaque, open top → cameras top-down. Ø ~1.2–1.3 m, depth ~1.2 m, clear water.
 - Tilapia, est. 50–100.
 - **Camera (current): USB stereo "3D USB Camera"** (USB ID `32e4:0035`): one side-by-side MJPG frame (left | right), up to **3840×1080 @ 60 fps = 1920×1080 per eye**. Replaced the ribbon modules (Nov 2026).
-- Planned mount: top-down, ~69 cm (27") above water (water surface is ~29" below the tank rim), ~10 cm baseline. Short image axis covers ~91 cm of the ~125 cm tank → ~84% of the surface is in frame; two thin edge strips are cut off.
+- Planned mount: top-down, ~69 cm (27") above water (water surface is ~29" below the tank rim). **Baseline ≈ 60 mm** (lens gap measured 2 3/8"; confirm with `calibrate_stereo.py`). Short image axis covers ~91 cm of the ~125 cm tank → ~84% of the surface is in frame; two thin edge strips are cut off.
 - **Pi:** Raspberry Pi 4 (hostname `Rpifishfeeder`), Raspberry Pi OS 64-bit, controlled over **SSH from a laptop on a phone hotspot** (no monitor/keyboard). Find its IP: `1..14 | % { ping -n 2 -w 1000 "172.20.10.$_" | Out-Null }; arp -a` → MAC starting `dc-a6-32`/`2c-cf-67`/`d8-3a-dd`/`e4-5f-01`.
 - ⚠️ The first Pi 4 board has a **dead USB controller** (`lsusb` empty, `dmesg`: `brcm-pcie … link down`, persists after bootloader update) → don't use it for the camera. Always check `lsusb` shows the **VIA Labs hub** first.
 - Night recording open: candidate 940 nm IR + NoIR cameras.
+
+## One-command recording (`V1/Capture/rec.sh`) 🟢 use this
+Wraps `record_usb.py` in tmux so a recording **keeps going if SSH drops**. On the Pi (`sudo apt install -y tmux` once):
+- `./V1/Capture/rec.sh start 20 fish` → 20 min, label `fish` (safe to close SSH right away)
+- `./V1/Capture/rec.sh status` → running?, last log lines, newest files, free space
+- `./V1/Capture/rec.sh stop` → stop early (file closed cleanly) · `./V1/Capture/rec.sh watch` → live output (detach Ctrl+B, D)
+- Log: `recordings/rec.log`. Only one recording at a time.
+- **Current goal:** ~20 min of tank footage to label for the fish detector (no feeding protocol yet).
 
 ## USB stereo capture (`V1/Capture/record_usb.py`) 🟢 current
 Records the USB stereo camera on the Pi; processing is offline.
 - **Install (Pi):** `sudo apt install -y ffmpeg v4l-utils python3-yaml git`
 - **Check camera:** `lsusb` → `3D USB Camera`; `v4l2-ctl --list-devices` → first node (usually `/dev/video0`) goes in `capture_usb.yaml`.
 - **Record:** `python3 V1/Capture/record_usb.py --config V1/configs/capture_usb.yaml --duration 600 --label prefeed` (`--duration 0` = until Ctrl-C)
-- **Camera controls:** `--show-controls` lists names; set fixed exposure/white balance under `controls:` once tank lighting is known.
+- **Camera controls** (`--show-controls`): `auto_exposure` (1 manual / 3 auto), `exposure_time_absolute` (100 µs units, ≤333 at 30 fps), `gain` 0–255, `white_balance_automatic`, `white_balance_temperature` 2800–6500 K, `power_line_frequency`.
+  - ⚠️ Camera ships at **50 Hz** anti-flicker; config sets **`power_line_frequency: 2` (60 Hz, US)** to avoid light banding.
+  - Lock exposure/WB in the lab once lighting is set (commented template in `capture_usb.yaml`).
 - **Output per segment** (`recordings/`, gitignored):
   - `…_stereo_seg<K>.mkv`: MJPG copied from the camera, **left half = left eye**
   - `…_ts.txt`: one timestamp per frame (ms from segment start, mkv timecode v2)
@@ -51,13 +61,22 @@ Records the USB stereo camera on the Pi; processing is offline.
 - **Long runs over SSH:** run inside `tmux` (`tmux new -s rec`, detach Ctrl+B D, `tmux attach -t rec`); a dropped SSH session otherwise kills the recording.
 
 ## Stereo calibration (`V1/Tools/calibrate_stereo.py`) 🟡 needs first real run
-Gets each eye's lens distortion, the baseline and the rectification needed for depth. Run on the **laptop**.
+Gets each eye's lens distortion, the baseline and the rectification needed for depth. Runs on the **Pi** (no big download) or a laptop.
+- **Pi install:** `sudo apt install -y python3-opencv python3-numpy` (~10–20 min run for a 2 min video).
+- **Printed board checked:** 10 squares = 9 7/8", 7 squares = 6 7/8" → **25 mm squares, no scaling** (`--square-mm 25`).
 - **Board:** `docs/calibration/checkerboard_letter_25mm.pdf` (10×7 squares = **9×6 inner corners**, 25 mm). Print at 100% / Actual size, **measure a square**, glue flat, keep the white border. 11×17 version (35 mm) also there. Never tile sheets.
 - **Record (Pi, camera still):** `python3 V1/Capture/record_usb.py --duration 90 --label calib` while moving the board slowly through all **9 image zones**, ~50/75/100 cm, with tilts, pausing ~1 s per pose, fully inside **both** eyes.
 - **Run:** `python V1/Tools/calibrate_stereo.py --video <…calib…seg000.mkv> --square-mm <measured>`
 - **Output:** `V1/configs/stereo_calib.yaml` (K/D per eye, R/T, R1 R2 P1 P2 Q, `baseline_mm`, RMS, 3×3 coverage) + `stereo_calib_check.jpg` (rectified pair with horizontal lines, gitignored).
 - **Pass:** stereo RMS < ~1 px · baseline ≈ ruler-measured lens gap · no empty coverage zones in either eye. Commit the YAML once it passes.
 - **Gotchas:** calibration is **in air**; underwater depth needs a refraction correction (bucket test still to do). Recalibrate if the camera is dropped or anything on it changes. Uses OpenCV's rational distortion model (wide lenses). Verified on synthetic stereo video: recovered a 60.0 mm baseline exactly.
+
+## Labeling frames (`V1/Tools/extract_frames.py`) 🟢
+Pulls spaced, non-duplicate frames from recordings for YOLO box labeling.
+- `python V1/Tools/extract_frames.py --video recordings/*fish*.mkv --out datasets/frames/session1 --interval 3`
+- Saves the **left eye** by default (`--eye right|full`); skips near-identical frames (`--min-diff`, default 2). ~20 min @ 3 s → ≤400 frames.
+- Runs frames through `Data_Pipeline.preprocess` (currently pass-through) so training matches inference; set the tank mask before extracting the final labeling set.
+- `datasets/` is gitignored.
 
 ## Ribbon-camera capture (`V1/Capture/record.py`) ⚪ not in use
 For the Camera Module 3 (picamera2) setup that was replaced by the USB stereo camera. Kept in case CSI cameras return.
