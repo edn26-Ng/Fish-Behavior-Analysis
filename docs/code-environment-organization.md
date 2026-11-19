@@ -61,6 +61,7 @@ Fish-Behavior-Analysis/
 ├── webcam_demo/                # webcam concept demo (unchanged)
 ├── V1/
 │   ├── Capture/
+│   │   ├── rec.sh              🟢 one-command start/status/stop in tmux (survives SSH drops)
 │   │   ├── record_usb.py       🟢 USB stereo recorder (ffmpeg, MJPG copy): segmented mkv + per-frame timestamps + JSON
 │   │   └── record.py           ⚪ ribbon-camera recorder (picamera2); not in use since the switch to the USB stereo camera
 │   ├── Data_Pipeline/
@@ -70,11 +71,11 @@ Fish-Behavior-Analysis/
 │   │   ├── tracker.py          🟡 tracking on every frame; stock BoT-SORT by default
 │   │   └── logger.py           ✅ per-frame CSV writer
 │   ├── Tools/
+│   │   ├── extract_frames.py   🟢 spaced, de-duplicated left-eye frames for labeling
 │   │   ├── calibrate_stereo.py 🟡 USB stereo calibration from a checkerboard video → configs/stereo_calib.yaml
 │   │   ├── track_video.py      ⬜ main CLI ("trackerCLI"), file exists but empty
 │   │   ├── replay.py           ⬜ draw CSV back onto video
 │   │   ├── track_report.py     🦴 tracking-quality report (thresholds need fish data)
-│   │   └── extract_frames.py   🦴 frames for labeling (needs tilapia recordings)
 │   └── configs/
 │       ├── capture_usb.yaml    🟢 USB stereo settings (device, 3840×1080@30, v4l2 controls, segments)
 │       ├── capture.yaml        ⚪ ribbon-camera settings (cameras, 1536×864@30, exposure lock, focus, segments)
@@ -196,7 +197,7 @@ python V1/Tools/track_video.py --config V1/configs/pipeline.yaml --video recordi
 - Number of unique IDs vs estimated fish count (50–100), track-length distribution, fragmented tracks, impossible jumps (likely ID switches).
 - Skeleton now; jump/length thresholds need real fish data.
 
-### `V1/Tools/extract_frames.py` 🦴
+### `V1/Tools/extract_frames.py` 🟢
 **Job:** pull labeling frames **spread out in time** (e.g. every 3–5 s), skip near-duplicates, apply the same preprocessing, write images for CVAT/Roboflow.
 
 ### `V1/configs/pipeline.yaml` ⬜

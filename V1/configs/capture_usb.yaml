@@ -10,13 +10,14 @@ video:
   fps: 30                     # DEFAULT: 30 (Pi 4 keeps up at 3840x1080). Camera supports 60.
   # MJPG is copied straight from the camera (no re-encode): ~44 GB/hour at 3840x1080@30.
 
-controls:                     # passed to `v4l2-ctl --set-ctrl` before recording; names vary by camera
-  {}                          # DEFAULT: none (camera auto exposure/white balance).
-  # After checking names with --show-controls, lock for the tank, e.g.:
-  # auto_exposure: 1                 # 1 = manual
-  # exposure_time_absolute: 156
-  # white_balance_automatic: 0
-  # white_balance_temperature: 4600
+controls:                     # passed to `v4l2-ctl --set-ctrl` before recording (names from --show-controls)
+  power_line_frequency: 2     # DEFAULT: 2 = 60 Hz (US mains). Camera ships at 1 = 50 Hz → light flicker bands.
+  # Lock in the lab once lighting is set (values below are this camera's ranges/defaults):
+  # auto_exposure: 1                  # 1 = manual, 3 = auto (Aperture Priority, default)
+  # exposure_time_absolute: 156       # units of 100 µs (156 = 15.6 ms); must be ≤ 333 at 30 fps
+  # gain: 110                         # 0–255
+  # white_balance_automatic: 0        # 0 = off (then temperature applies)
+  # white_balance_temperature: 4600   # 2800–6500 K
 
 recording:
   out_dir: recordings         # gitignored
