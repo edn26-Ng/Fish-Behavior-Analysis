@@ -60,8 +60,11 @@ Records the USB stereo camera on the Pi; processing is offline.
 - **Gotchas:** stopping with Ctrl-C closes the file cleanly (ffmpeg gets SIGINT). Frame drops are flagged if measured fps < 90% of requested. Download over the hotspot runs ~11 MB/s (≈1 h per hour of footage) → move long recordings with a USB SSD/stick.
 - **Long runs over SSH:** run inside `tmux` (`tmux new -s rec`, detach Ctrl+B D, `tmux attach -t rec`); a dropped SSH session otherwise kills the recording.
 
-## Stereo calibration (`V1/Tools/calibrate_stereo.py`) 🟡 needs first real run
+## Stereo calibration (`V1/Tools/calibrate_stereo.py`) 🟢 v1 committed (center only)
 Gets each eye's lens distortion, the baseline and the rectification needed for depth. Runs on the **Pi** (no big download) or a laptop.
+- **Current result (`V1/configs/stereo_calib.yaml`, Nov 19 2026, in air, 47 views):** stereo RMS **0.495 px** ✅ · baseline **58.0 mm** ✅ (ruler 60 mm) · rectified focal **648 px**.
+  - ⚠️ **Center-only coverage:** board corners reached only x 477–1329 of 1920 (y 81–899). Distortion is solid in the **middle ~45%** of each eye and extrapolated at the left/right edges.
+  - **Plan:** use as-is. Redo with an edge sweep **once the camera is mounted in the lab** (board at tank distance, sweep past every edge), or sooner if depth looks wrong near the edges.
 - **Pi install:** `sudo apt install -y python3-opencv python3-numpy`. First full-res run on a 2 min video took **>20 min** on the Pi 4; corner search now runs on a half-size image (`--scale 0.5`, ~4× faster) then refines at full res.
 - **Resumable:** detections are checkpointed to `<video>.corners.jsonl` as they're found. If it's interrupted (Ctrl-C, SSH drop, **unplugging**), rerun the **same command** and it continues where it stopped. `--fresh` starts over. Progress prints every 50 frames.
 - **Run in tmux on the Pi:** `V=$(ls recordings/*calib*seg000.mkv | tail -1); tmux new -d -s calib "python3 -u V1/Tools/calibrate_stereo.py --video $V --square-mm 25 2>&1 | tee -a recordings/calib.log"` → check `tail recordings/calib.log`.
@@ -71,6 +74,8 @@ Gets each eye's lens distortion, the baseline and the rectification needed for d
 - **Run:** `python V1/Tools/calibrate_stereo.py --video <…calib…seg000.mkv> --square-mm <measured>`
 - **Output:** `V1/configs/stereo_calib.yaml` (K/D per eye, R/T, R1 R2 P1 P2 Q, `baseline_mm`, RMS, 3×3 coverage) + `stereo_calib_check.jpg` (rectified pair with horizontal lines, gitignored).
 - **Pass:** stereo RMS < ~1 px · baseline ≈ ruler-measured lens gap · no empty coverage zones in either eye. Commit the YAML once it passes.
+- **Coverage counts the board's *center*.** To reach edge zones, hold the board farther (80–100 cm) so it's small, and sweep **past** each edge; frames with the board cut off are skipped automatically. Check reach: corner x should span ~<200 to >1700.
+- **Pi `git pull` after this file is committed:** if the Pi made its own copy, move it first (`mv V1/configs/stereo_calib.yaml ~/`), or pull fails on the untracked file.
 - **Gotchas:** calibration is **in air**; underwater depth needs a refraction correction (bucket test still to do). Recalibrate if the camera is dropped or anything on it changes. Uses OpenCV's rational distortion model (wide lenses). Verified on synthetic stereo video: recovered a 60.0 mm baseline exactly.
 
 ## Labeling frames (`V1/Tools/extract_frames.py`) 🟢
