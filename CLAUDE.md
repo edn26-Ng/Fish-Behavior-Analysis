@@ -62,7 +62,9 @@ Records the USB stereo camera on the Pi; processing is offline.
 
 ## Stereo calibration (`V1/Tools/calibrate_stereo.py`) 🟡 needs first real run
 Gets each eye's lens distortion, the baseline and the rectification needed for depth. Runs on the **Pi** (no big download) or a laptop.
-- **Pi install:** `sudo apt install -y python3-opencv python3-numpy` (~10–20 min run for a 2 min video).
+- **Pi install:** `sudo apt install -y python3-opencv python3-numpy`. First full-res run on a 2 min video took **>20 min** on the Pi 4; corner search now runs on a half-size image (`--scale 0.5`, ~4× faster) then refines at full res.
+- **Resumable:** detections are checkpointed to `<video>.corners.jsonl` as they're found. If it's interrupted (Ctrl-C, SSH drop, **unplugging**), rerun the **same command** and it continues where it stopped. `--fresh` starts over. Progress prints every 50 frames.
+- **Run in tmux on the Pi:** `V=$(ls recordings/*calib*seg000.mkv | tail -1); tmux new -d -s calib "python3 -u V1/Tools/calibrate_stereo.py --video $V --square-mm 25 2>&1 | tee -a recordings/calib.log"` → check `tail recordings/calib.log`.
 - **Printed board checked:** 10 squares = 9 7/8", 7 squares = 6 7/8" → **25 mm squares, no scaling** (`--square-mm 25`).
 - **Board:** `docs/calibration/checkerboard_letter_25mm.pdf` (10×7 squares = **9×6 inner corners**, 25 mm). Print at 100% / Actual size, **measure a square**, glue flat, keep the white border. 11×17 version (35 mm) also there. Never tile sheets.
 - **Record (Pi, camera still):** `python3 V1/Capture/record_usb.py --duration 90 --label calib` while moving the board slowly through all **9 image zones**, ~50/75/100 cm, with tilts, pausing ~1 s per pose, fully inside **both** eyes.
