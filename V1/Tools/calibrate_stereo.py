@@ -14,6 +14,10 @@ Writes (default V1/configs/stereo_calib.yaml):
   baseline_mm, RMS errors, image coverage. Also <out>_check.jpg: rectified pair with
   horizontal lines; the same board corner must sit on the same line in both eyes.
 
+Resumable: board detections are checkpointed to <video>.corners.jsonl as they are found; rerunning
+the same command after an interruption (Ctrl-C, SSH drop, power loss) skips frames already done.
+Use --fresh to start over. Progress prints every 50 frames.
+
 Pass checks: stereo RMS < ~1.0 px, baseline matches a ruler measurement of the lens gap,
 coverage has board detections in all 9 zones of each eye.
 """
@@ -21,6 +25,7 @@ coverage has board detections in all 9 zones of each eye.
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 
 import cv2
@@ -37,11 +42,19 @@ def board_points(cols: int, rows: int, square_mm: float) -> np.ndarray:
     return obj
 
 
-def find_corners(gray: np.ndarray, pattern: tuple[int, int]) -> np.ndarray | None:
-    ok, c = cv2.findChessboardCorners(gray, pattern, FIND_FLAGS)
-    if not ok:
-        return None
-    return cv2.cornerSubPix(gray, c, (7, 7), (-1, -1), CRIT)
+def find_corners(gray: np.ndarray, pattern: tuple[int, int], scale: float = 0.5) -> np.ndarray | None:
+    """Search on a downscaled copy (~4x faster), then refine to sub-pixel on the full image."""
+    if scale < 1.0:
+        small = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+        ok, c = cv2.findChessboardCorners(small, pattern, FIND_FLAGS)
+        if not ok:
+            return None
+        c = (c / scale).astype(np.float32)
+    else:
+        ok, c = cv2.findChessboardCorners(gray, pattern, FIND_FLAGS)
+        if not ok:
+            return None
+    return cv2.cornerSubPix(gray, c, (11, 11), (-1, -1), CRIT)
 
 
 def sharpness(gray: np.ndarray, corners: np.ndarray) -> float:
@@ -59,43 +72,78 @@ def zone_counts(corner_sets: list[np.ndarray], w: int, h: int) -> list[list[int]
     return grid
 
 
-def collect(video: str, pattern, step: int, max_pairs: int, min_move_px: float, min_sharp: float):
+def detect_all(video: str, pattern, step: int, scale: float, cache: Path, fresh: bool):
+    """Pass 1: find the board in every Nth frame. Results go to a checkpoint file line by line,
+    so an interrupted run (Ctrl-C, SSH drop, power loss) resumes where it stopped."""
+    done: dict[int, dict] = {}
+    if cache.exists() and not fresh:
+        for line in cache.read_text().splitlines():
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue  # half-written last line after a power cut
+            done[rec["i"]] = rec
+        if done:
+            print(f"Resuming: {len(done)} frames already checked (checkpoint {cache.name})", flush=True)
+    elif fresh and cache.exists():
+        cache.unlink()
+
     cap = cv2.VideoCapture(video)
     if not cap.isOpened():
         raise SystemExit(f"Cannot open {video}")
-    pairs, last_centre, i, seen = [], None, 0, 0
-    eye_w = eye_h = None
-    while True:
-        ok, frame = cap.read()
-        if not ok:
-            break
-        i += 1
-        if i % step:
+    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) or 0
+    eye_w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH)) // 2
+    eye_h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    todo = total // step if total else 0
+    with cache.open("a") as out:
+        i = 0
+        while True:
+            i += 1
+            if i % step or i in done:
+                if not cap.grab():
+                    break
+                continue
+            ok, frame = cap.read()
+            if not ok:
+                break
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            left, right = gray[:, :eye_w], gray[:, eye_w: 2 * eye_w]
+            rec = {"i": i, "l": None, "r": None, "sharp": 0.0}
+            cl = find_corners(left, pattern, scale)
+            cr = find_corners(right, pattern, scale) if cl is not None else None
+            if cl is not None and cr is not None:
+                rec.update(l=cl.reshape(-1, 2).tolist(), r=cr.reshape(-1, 2).tolist(),
+                           sharp=min(sharpness(left, cl), sharpness(right, cr)))
+            out.write(json.dumps(rec) + "\n")
+            out.flush()
+            done[i] = rec
+            if len(done) % 50 == 0:
+                print(f"  checked {len(done)}/{todo or '?'} frames, board in both eyes: "
+                      f"{sum(r['l'] is not None for r in done.values())}", flush=True)
+    cap.release()
+    return done, (eye_w, eye_h)
+
+
+def select(done: dict, max_pairs: int, min_move_px: float, min_sharp: float):
+    """Pass 2: keep sharp, distinct poses seen in both eyes (same result on every resume)."""
+    pairs, last_centre = [], None
+    for i in sorted(done):
+        rec = done[i]
+        if rec["l"] is None or rec["sharp"] < min_sharp:
             continue
-        seen += 1
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        eye_h, w = gray.shape
-        eye_w = w // 2
-        left, right = gray[:, :eye_w], gray[:, eye_w: 2 * eye_w]
-        cl = find_corners(left, pattern)
-        if cl is None:
-            continue
-        cr = find_corners(right, pattern)
-        if cr is None:
-            continue
-        if min(sharpness(left, cl), sharpness(right, cr)) < min_sharp:
-            continue  # motion blur
+        cl = np.array(rec["l"], np.float32).reshape(-1, 1, 2)
+        cr = np.array(rec["r"], np.float32).reshape(-1, 1, 2)
         centre = cl.reshape(-1, 2).mean(axis=0)
         if last_centre is not None and np.linalg.norm(centre - last_centre) < min_move_px:
-            continue  # near-duplicate pose
+            continue
         last_centre = centre
         pairs.append((cl, cr))
-    cap.release()
-    print(f"Checked {seen} frames → {len(pairs)} usable board pairs (seen in both eyes, sharp, distinct)")
+    print(f"Checked {len(done)} frames → {len(pairs)} usable board pairs (seen in both eyes, sharp, distinct)",
+          flush=True)
     if len(pairs) > max_pairs:  # keep an even spread through the video
         idx = np.linspace(0, len(pairs) - 1, max_pairs).round().astype(int)
         pairs = [pairs[k] for k in idx]
-    return pairs, (eye_w, eye_h)
+    return pairs
 
 
 def check_image(video: str, maps, size, out_path: Path) -> None:
@@ -124,11 +172,15 @@ def main() -> None:
     ap.add_argument("--max-pairs", type=int, default=60, help="cap on board views used (default 60)")
     ap.add_argument("--min-move-px", type=float, default=40.0, help="skip poses closer than this (default 40)")
     ap.add_argument("--min-sharp", type=float, default=50.0, help="Laplacian variance blur cutoff (default 50)")
+    ap.add_argument("--scale", type=float, default=0.5, help="search on a downscaled image (default 0.5; 1 = full size)")
+    ap.add_argument("--fresh", action="store_true", help="ignore the checkpoint and start over")
     ap.add_argument("--out", default="V1/configs/stereo_calib.yaml")
     args = ap.parse_args()
 
     pattern = (args.cols, args.rows)
-    pairs, size = collect(args.video, pattern, args.step, args.max_pairs, args.min_move_px, args.min_sharp)
+    cache = Path(args.video).with_suffix(".corners.jsonl")  # checkpoint next to the video
+    done, size = detect_all(args.video, pattern, args.step, args.scale, cache, args.fresh)
+    pairs = select(done, args.max_pairs, args.min_move_px, args.min_sharp)
     if len(pairs) < 10:
         raise SystemExit("Too few usable views (<10). Move slower, pause at each pose, keep the board in both eyes.")
 
